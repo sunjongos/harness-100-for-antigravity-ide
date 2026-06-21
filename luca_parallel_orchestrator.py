@@ -38,18 +38,9 @@ class LucaParallelOrchestrator:
         self.workspace_dir = Path(workspace_dir or os.getcwd())
         self.output_dir = self.workspace_dir / "_workspace"
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        # Robust path detection for standalone or root runner
-        if (self.workspace_dir / "harness-100").exists():
-            self.harnesses_dir = self.workspace_dir / "harness-100" / "ko"
-            if not self.harnesses_dir.exists():
-                self.harnesses_dir = self.workspace_dir / "harness-100" / "en"
-        else:
-            self.harnesses_dir = self.workspace_dir / "ko"
-            if not self.harnesses_dir.exists():
-                self.harnesses_dir = self.workspace_dir / "en"
-        # Dummy variable to bypass original check if any
-        _dummy = True
+        self.harnesses_dir = self.workspace_dir / "harness-100" / "ko"
         if not self.harnesses_dir.exists():
+            self.harnesses_dir = self.workspace_dir / "harness-100" / "en"
 
     def detect_coral_tpu(self) -> str:
         """Detects if Google Coral Edge TPU is connected on Windows"""
@@ -88,6 +79,150 @@ class LucaParallelOrchestrator:
         except Exception:
             pass
         return "Samsung T9 SSD (Connected / Sector-Aligned)"
+
+    def retrieve_ontology_context(self, user_task: str) -> str:
+        """Queries Neo4j and scans Obsidian shared memory for task-relevant context"""
+        print("[Context Retrieval] Querying Neo4j and Obsidian shared memory for relevance...")
+        facts = []
+        
+        # 1. Query Neo4j Graph Database
+        from neo4j import GraphDatabase
+        driver = None
+        try:
+            driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD), connection_timeout=3.0)
+            # Match recently updated memories
+            with driver.session() as session:
+                # Query 1: Get recent memory nodes
+                query1 = "MATCH (m:Memory) RETURN m.id as id, m.summary as summary, m.created_at as created_at ORDER BY m.created_at DESC LIMIT 3"
+                res1 = session.run(query1)
+                for record in res1:
+                    facts.append(f"[Neo4j Memory ({record.get('created_at', 'recent')}): {record.get('summary', '')}]")
+                    
+                # Query 2: Get any lesson nodes
+                query2 = "MATCH (l:Lesson) RETURN l.id as id, l.content as content LIMIT 3"
+                res2 = session.run(query2)
+                for record in res2:
+                    facts.append(f"[Neo4j Lesson ({record.get('id', '')})]: {record.get('content', '')}")
+                    
+                # Query 3: Search keyword matches on entities
+                keywords = [w for w in re.split(r'\s+|,|\.|\?|!|\"|\'', user_task) if len(w) >= 2]
+                if keywords:
+                    for kw in keywords[:3]:
+                        query3 = f"MATCH (n) WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS '{kw}') RETURN labels(n) as labels, n as properties LIMIT 2"
+                        res3 = session.run(query3)
+                        for record in res3:
+                            lbl = record['labels'][0] if record['labels'] else "Entity"
+                            props = record['properties']
+                            name = props.get('name') or props.get('id') or props.get('summary') or str(props)
+                            facts.append(f"[Neo4j Ontology ({lbl})]: {name}")
+        except Exception as e:
+            print(f"[Context Retrieval Warning] Neo4j connection failed: {e}")
+        finally:
+            if driver:
+                driver.close()
+                
+        # 2. Scan Obsidian Shared Memory (.md files)
+        try:
+            memory_dir = self.workspace_dir / "장기공유메모리" / "luca_brain_memory"
+            if memory_dir.exists():
+                keywords = [w for w in re.split(r'\s+|,|\.|\?|!|\"|\'', user_task) if len(w) >= 2]
+                md_files = list(memory_dir.glob("*.md"))
+                matched_files = []
+                
+                for f in md_files:
+                    filename = f.name
+                    overlap = False
+                    for kw in keywords:
+                        if kw.lower() in filename.lower():
+                            overlap = True
+                            break
+                    if overlap:
+                        matched_files.append(f)
+                        
+                if not matched_files:
+                    matched_files = sorted(md_files, key=lambda x: x.stat().st_mtime, reverse=True)[:2]
+                else:
+                    matched_files = matched_files[:3]
+                    
+                for f in matched_files:
+                    content = f.read_text(encoding="utf-8")
+                    summary_match = re.search(r"##\s*1\.\s*Context(.*?)(##|$)", content, re.DOTALL | re.IGNORECASE)
+                    if summary_match:
+                        summary_text = summary_match.group(1).strip()
+                    else:
+                        summary_text = content[:400] + "..."
+                    facts.append(f"[Obsidian Memory - {f.name}]: {summary_text[:300]}")
+        except Exception as e:
+            print(f"[Context Retrieval Warning] Obsidian shared memory scan failed: {e}")
+            
+        if facts:
+            context_md = "\n### 🧠 Shared Knowledge & Long-Term Memory Context:\n"
+            context_md += "The following context has been retrieved from the Neo4j Ontology and Obsidian long-term shared memory as relevant to the current task:\n"
+            for fact in facts:
+                context_md += f"- {fact}\n"
+            return context_md
+        
+        return ""
+
+    def generate_custom_harness(self, user_task: str) -> dict:
+        """Dynamically designs a custom multi-agent harness for the given task using Gemini"""
+        print("[Custom Harness Creator] Designing a bespoke multi-agent workflow...")
+        
+        sys_prompt = (
+            "You are an expert multi-agent systems architect. Your job is to analyze a complex task "
+            "and design a custom multi-agent workflow (harness) specifically optimized to solve it.\n"
+            "You must define a team of 3-5 specialized agents and a step-by-step workflow DAG "
+            "where some steps can execute in parallel.\n"
+            "Output must be strictly raw JSON matching the required schema, without any markdown formatting wrappers."
+        )
+        
+        user_prompt = f"""
+        Design a custom multi-agent workflow to solve the following task:
+        "{user_task}"
+        
+        You must output JSON with this exact structure:
+        {{
+          "harness_name": "A descriptive name for this custom harness",
+          "description": "A brief explanation of how this custom workflow solves the task",
+          "agents": {{
+            "agent_id_lowercase_alphanumeric": {{
+              "name": "Display Name of Agent (e.g. Market Research Expert)",
+              "description": "Role description for this agent",
+              "system_prompt": "A detailed system prompt outlining their persona, expertise, guidelines, and expected markdown output format."
+            }}
+          }},
+          "workflow": [
+            {{
+              "step": 1,
+              "parallel_agents": ["agent_id_lowercase_alphanumeric"],
+              "description": "Description of what Step 1 does"
+            }}
+          ]
+        }}
+        """
+        
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=sys_prompt,
+                temperature=0.3,
+                response_mime_type="application/json"
+            ),
+        )
+        
+        clean_text = response.text.strip()
+        try:
+            meta = json.loads(clean_text, strict=False)
+            config_file = self.output_dir / "custom_harness_config.json"
+            config_file.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"[Custom Harness Creator] Custom harness '{meta['harness_name']}' created successfully!")
+            print(f"  Saved configuration to _workspace/custom_harness_config.json")
+            return meta
+        except Exception as e:
+            print(f"[Error] Custom harness generation failed to parse: {e}")
+            print(f"Raw response: {clean_text}")
+            raise e
 
     def find_harness_folder(self, harness_query: str) -> Path:
         """Finds a harness folder by ID or name (e.g. '01' or 'youtube-production')"""
@@ -179,7 +314,7 @@ Return JSON with exactly this structure:
                 print(f"Raw response: {response.text}")
                 raise e2
 
-    def call_agent(self, agent_id: str, agent_info: dict, user_task: str, context_files: list, step_idx: int) -> dict:
+    def call_agent(self, agent_id: str, agent_info: dict, user_task: str, context_files: list, step_idx: int, ontology_context: str = "") -> dict:
         """Executes a single agent prompt via Gemini API with Edge TPU vision routing logs if applicable"""
         print(f"  [Agent: {agent_info['name']}] Starting execution...")
         start_time = time.time()
@@ -192,9 +327,9 @@ Return JSON with exactly this structure:
             print(f"  [Agent: {agent_info['name']}] 🔮 TPU Sensory Cortex Routing: Image/Vision task detected. Utilizing local Coral Edge TPU acceleration for local processing metadata.")
 
         # Load context from previously generated files
-        context_str = ""
+        context_str = ontology_context if ontology_context else ""
         if context_files:
-            context_str = "### Context from previous steps:\n"
+            context_str += "\n### Context from previous steps:\n"
             for file_path in context_files:
                 if file_path.exists():
                     context_str += f"\n---\nFile: {file_path.name}\nContent:\n{file_path.read_text(encoding='utf-8')}\n"
@@ -248,14 +383,30 @@ Please generate your assigned output as specified in your role description. Save
             "output_filename": output_filename,
             "content_preview": output_content[:200] + "..." if len(output_content) > 200 else output_content
         }
-
     def execute_harness(self, harness_query: str, user_task: str) -> dict:
         """Executes the full parallel orchestrator loop for a harness"""
-        harness_folder = self.find_harness_folder(harness_query)
-        print(f"🚀 [Orchestrator] Selected Harness Folder: {harness_folder.name}")
-        
-        # Compile structure
-        meta = self.load_harness_metadata(harness_folder)
+        # Retrieve Ontology & Obsidian Context once before execution
+        ontology_context = self.retrieve_ontology_context(user_task)
+        if ontology_context:
+            print("[Context Retrieval] Task-relevant shared memory context retrieved successfully!")
+
+        is_custom_harness = False
+        try:
+            if harness_query.lower() in ["custom", "dynamic"]:
+                raise FileNotFoundError("Custom requested")
+            harness_folder = self.find_harness_folder(harness_query)
+            print(f"🚀 [Orchestrator] Selected Harness Folder: {harness_folder.name}")
+            meta = self.load_harness_metadata(harness_folder)
+        except Exception as e:
+            if harness_query.lower() in ["custom", "dynamic"] or isinstance(e, FileNotFoundError):
+                print(f"🔮 [Orchestrator] Harness '{harness_query}' not found or custom requested. Initiating Generative Custom Harness Creator...")
+                is_custom_harness = True
+                meta = self.generate_custom_harness(user_task)
+                harness_folder = self.output_dir / "custom_harness"
+                harness_folder.mkdir(parents=True, exist_ok=True)
+            else:
+                raise e
+
         print(f"📊 [Orchestrator] Harness compiled: {meta['harness_name']}")
         print(f"   Description: {meta['description']}")
         print(f"   Agents involved: {', '.join([a['name'] for a in meta['agents'].values()])}")
@@ -289,7 +440,8 @@ Please generate your assigned output as specified in your role description. Save
                             meta["agents"][agent_id], 
                             user_task, 
                             context_files.copy(), 
-                            step_idx
+                            step_idx,
+                            ontology_context
                         ): agent_id for agent_id in agents_to_run if agent_id in meta["agents"]
                     }
                     for future in as_completed(futures):
@@ -299,9 +451,8 @@ Please generate your assigned output as specified in your role description. Save
                 # Sequential Execution (Single agent step)
                 for agent_id in agents_to_run:
                     if agent_id in meta["agents"]:
-                        res = self.call_agent(agent_id, meta["agents"][agent_id], user_task, context_files.copy(), step_idx)
+                        res = self.call_agent(agent_id, meta["agents"][agent_id], user_task, context_files.copy(), step_idx, ontology_context)
                         step_logs.append(res)
-            
             # Add new outputs to context files for subsequent steps
             for log in step_logs:
                 if log["status"] == "SUCCESS":
