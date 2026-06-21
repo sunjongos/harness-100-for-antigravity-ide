@@ -1,102 +1,89 @@
-# Harness 100
+# Harness 100 for Antigravity IDE 🚀
 
-Production-grade agent team harness collection for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+This is a customized fork of **Harness 100**—a production-grade collection of **100 agent team harnesses**—fully optimized for **Antigravity IDE** with parallel orchestration, hardware acceleration, and an interactive UI dashboard.
 
-100 ready-to-use harnesses across 10 domains — each with 4-5 specialist agents, an orchestrator skill, and 2-3 agent-extending skills. Available in **Korean** and **English**.
+Each harness coordinates 4-5 specialist agents cooperating as a high-fidelity team to solve domain-specific tasks. The Antigravity integration enables async execution, hardware pooling (Coral TPU / SSD), and graph synchronization.
 
-> **[English (en/)](en/)** | **[Korean (ko/)](ko/)**
+---
 
-## At a Glance
+## ⚡ Antigravity IDE Integration Features
 
-| | ko/ | en/ | Total |
-|---|-----|-----|-------|
-| Harnesses | 100 | 100 | 200 |
-| Agent definitions | 489 | 489 | 978 |
-| Skills | 315 | 315 | 630 |
-| Total .md files | 904 | 904 | **1,808** |
+1. **Parallel Orchestrator Engine (`luca_parallel_orchestrator.py`)**
+   - **Gemini-Powered DAG Compilation**: Dynamically reads harness specifications and skills using Gemini (`response_mime_type="application/json"`) to map out execution dependencies.
+   - **Thread Pool Parallelization**: Executes non-dependent agent steps (e.g., scriptwriting & thumbnail design) concurrently, cutting total pipeline execution time by over 50%.
+   - **Hardware Acceleration**:
+     - **Google Coral Edge TPU**: Automatically detects and leverages Coral Edge TPU hardware for visual and image-related inference steps.
+     - **Samsung T9 SSD**: Configured with Sector-Aligned direct write logs to prevent file system I/O bottlenecks during concurrent generation.
+   - **ASMR & Graph DB Sync**: Automatically parses and syncs execution results to the local memory server (ASMR on Port 5050) and Neo4j graph database (bolt://localhost:7687).
 
-## Quick Start
+2. **Control Dashboard (`harness_dashboard.html`)**
+   - Premium Dark Mode and Glassmorphism Web Interface to monitor all 100 harnesses and copy commands.
+   - **Vis.js Interactive Graph**: Embedded dynamic node mapping showing the agent topology (Orchestrator ↔ Teammates) using a physics engine.
 
+3. **Antigravity Custom Skill (`.agent/skills/luca_harness_engine/SKILL.md`)**
+   - Internal guidelines allowing Antigravity agents (like LUCA) to intercept "HARNESS" queries and automatically launch orchestrator runs.
+
+---
+
+## 🏃 Quick Start & Usage
+
+### 1. Environment Config
+Create a `.env` file in the root directory (see `.env.example` for details):
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Neo4j Graph DB Config (Optional)
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+### 2. Execute via CLI
+Pass the harness identifier and your instructions directly:
 ```bash
-# Copy any harness into your project
-cp -r ko/01-youtube-production/.claude/ /path/to/my-project/.claude/
-
-# Or use the English version
-cp -r en/01-youtube-production/.claude/ /path/to/my-project/.claude/
+python luca_parallel_orchestrator.py --harness "47-strategy-framework" --task "Establish a 2026 digital transformation roadmap for Baek Hospital, including SWOT matrix, BSC metrics, and OKRs."
 ```
 
-## Categories
+### 3. Review Deliverables
+Outputs are sequentially written to the `_workspace/` directory along with a performance summary `run_result.json`.
 
-| # | Category | Harnesses | Highlights |
-|---|----------|-----------|------------|
-| 1 | Content Creation | 01-15 | YouTube, podcast, game narrative, comics, translation |
-| 2 | Software Dev & DevOps | 16-30 | Full-stack, API, CI/CD, security audit, IaC |
-| 3 | Data & AI/ML | 31-42 | ML experiments, NLP, RAG/LLM apps, design systems |
-| 4 | Business & Strategy | 43-55 | Startup, market research, pricing, financial modeling |
-| 5 | Education & Learning | 56-65 | Language tutor, exam prep, debate simulator, ADR |
-| 6 | Legal & Compliance | 66-72 | Contracts, patents, GDPR/PIPA, regulatory filing |
-| 7 | Health & Lifestyle | 73-80 | Meal planning, fitness, tax, travel, wedding |
-| 8 | Communication & Docs | 81-88 | Technical writing, SOP, proposals, crisis comms |
-| 9 | Operations & Process | 89-95 | Hiring, onboarding, audit, procurement |
-| 10 | Specialized Domains | 96-100 | Real estate, e-commerce, ESG, IP portfolio |
+---
 
-## Harness Architecture
+## 📂 Repository Structure
 
 ```
-{NN}-{harness-name}/
-└── .claude/
-    ├── CLAUDE.md                    # Project overview
-    ├── agents/
-    │   ├── {specialist-1}.md        # Domain expert agent
-    │   ├── {specialist-2}.md
-    │   ├── {specialist-3}.md
-    │   ├── {specialist-4}.md
-    │   └── {reviewer/qa}.md         # Cross-validation agent
-    └── skills/
-        ├── {orchestrator}/
-        │   └── skill.md             # Team orchestration
-        ├── {domain-skill-1}/
-        │   └── skill.md             # Agent-extending skill
-        └── {domain-skill-2}/
-            └── skill.md             # Agent-extending skill
+harness-100-antigravity/
+├── luca_parallel_orchestrator.py        # Antigravity Parallel Orchestrator
+├── harness_dashboard.html               # Premium HTML UI Control Panel
+├── .env.example                         # Environment template
+├── .agent/
+│   └── skills/
+│       └── luca_harness_engine/
+│           └── SKILL.md                 # Antigravity IDE custom skill
+├── ko/                                  # Korean Harnesses (01~100)
+├── en/                                  # English Harnesses (01~100)
+└── README.md
 ```
 
-### Three-Layer Skill System
+---
 
-| Layer | Purpose | Example |
-|-------|---------|---------|
-| **Orchestrator** | Team coordination, workflow, error handling | `youtube-production/skill.md` |
-| **Agent-Extending** | Domain knowledge that amplifies agent expertise | `hook-writing/skill.md`, `thumbnail-psychology/skill.md` |
-| **External** | Existing tools (Gemini image gen, web search) | `gemini-3-pro-imagegen` |
+## 🛠️ Harness Categories At a Glance
 
-## Quality Standards
+| Category | Harnesses | Description |
+|----------|-----------|-------------|
+| 1. Content & Creative | 01 ~ 15 | YouTube automation, podcast studio, game narrative, comic creator |
+| 2. Software Dev & DevOps | 16 ~ 30 | Full-stack webapp, API design, CI/CD pipelines, security audits |
+| 3. Data & AI/ML | 31 ~ 42 | ML experiments, RAG application builder, BI dashboards |
+| 4. Business & Strategy | 43 ~ 55 | Startup bm validation, market research, SWOT/BSC/OKR framework |
+| 5. Education & Learning | 56 ~ 65 | Language tutor, exam prep, debate simulation, knowledge bases |
+| 6. Legal & Compliance | 66 ~ 72 | Contract analysis, patent drafting, GDPR compliance |
+| 7. Health & Lifestyle | 73 ~ 80 | Meal planning, fitness tracking, personal finance, travel |
+| 8. Communication & Docs | 81 ~ 88 | Technical writing, SOP builder, proposal writer, crisis comms |
+| 9. Operations & Process | 89 ~ 95 | Hiring pipeline, employee onboarding, operations manual |
+| 10. Specialized Domains | 96 ~ 100 | Real estate analyst, e-commerce launch, ESG sustainability |
 
-Every harness includes:
+---
 
-- **Agent Team Mode** — SendMessage direct communication, cross-validation
-- **Domain Expertise** — Real frameworks (OWASP, Bloom's Taxonomy, Porter's 5 Forces, DCF, etc.)
-- **Structured Outputs** — Domain-specific templates per agent
-- **Dependency DAG** — Task ordering with parallel execution
-- **Error Handling** — Retry, skip, fallback strategies
-- **Scale Modes** — Full pipeline / reduced / single-agent
-- **Test Scenarios** — Normal / existing-file / error (3 types)
-- **Trigger Boundaries** — Should-trigger + NOT-trigger defined
+## ⚖️ License
 
-## Domain Expertise
-
-| Domain | Embedded Frameworks |
-|--------|-------------------|
-| Content | AIDA, Pattern Interrupt, CURVE formula, Platform Specs |
-| Development | SOLID, DDD, OWASP Top 10, Test Pyramid, DORA Metrics, CWE Top 25 |
-| Data | Star/Snowflake Schema, Great Expectations, SHAP/LIME, Feature Engineering |
-| Business | BMC, TAM/SAM/SOM, Porter's 5 Forces, RICE, Van Westendorp PSM |
-| Education | Bloom's Taxonomy, ADDIE, CEFR, SM-2 Spaced Repetition, Toulmin Model |
-| Legal | IRAC, MQM, GDPR/PIPA, IPC/CPC, Claim Drafting Patterns |
-| Lifestyle | BMR/TDEE, ACSM Guidelines, Compound Interest, Route Optimization |
-| Documents | Diataxis, PREP, STAR, MADR, SemVer, Mermaid Patterns |
-| Operations | SIPOC/RACI, 4C Framework, SMART, NPS/CSAT, BARS Assessment |
-| Specialized | GHG Protocol, Cap Rate/IRR, IMRaD, Georgia-Pacific, Double Materiality |
-
-## License
-
-Apache License 2.0 — See [LICENSE](LICENSE)
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
