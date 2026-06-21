@@ -16,11 +16,17 @@
      - **Samsung T9 SSD**: Direct I/O 및 Sector-Aligned 스토리지 쓰기 흐름을 연동하여 고속 병렬 디스크 I/O 병목을 최소화합니다.
    - **메모리 및 지식 그래프 동기화**: 모든 작업 결과물과 실행 통계를 로컬 해마 메모리 서버(ASMR 포트 5050) 및 Neo4j 그래프 데이터베이스(bolt://localhost:7687)에 자동으로 파싱하여 동기화합니다.
 
-2. **시각적 관제 대시보드 (`harness_dashboard.html`)**
+2. **온톨로지 기반 콘텍스트 자동 주입 (Ontology-driven Context Injection)**
+   - 실행 시점에 Neo4j Ontology Graph(기존 실행 기억, 에이전트 노드, 엔티티 노드) 및 옵시디언 장기공유메모리 폴더(`장기공유메모리/luca_brain_memory/`)에서 현재 태스크와 연관성이 높은 핵심 맥락을 추출하여, 모든 에이전트 프롬프트에 자동으로 연동하고 지식을 주입합니다.
+
+3. **자율 하이브리드 하네스 실시간 설계기 (Generative Custom Harness Creator)**
+   - 입력된 하네스 쿼리가 `"custom"`이거나 기존 100종의 하네스 폴더 중 일치하는 항목이 없을 때, Gemini 2.5를 통해 최적화된 3~5인 전문 에이전트 팀과 DAG 워크플로우 단계를 실시간으로 동적 컴파일(`custom_harness_config.json`)하여 완전히 새로운 과업 솔루션을 즉석에서 실행합니다.
+
+4. **시각적 관제 대시보드 (`harness_dashboard.html`)**
    - Premium Dark Mode 및 Glassmorphism UI 디자인을 반영하여, 100대 하네스 목록과 실행 명령을 편리하게 관리할 수 있습니다.
    - **Vis.js 대화형 네트워크 뷰**: 각 하네스의 에이전트 팀 협업 구도(Orchestrator ↔ Teammate ↔ Synthesizer) 및 결과 온톨로지를 물리 엔진 기반의 동적 노드 맵으로 시각화하여 탐색할 수 있습니다.
 
-3. **Antigravity 전용 커스텀 스킬 (`.agent/skills/luca_harness_engine/SKILL.md`)**
+5. **Antigravity 전용 커스텀 스킬 (`.agent/skills/luca_harness_engine/SKILL.md`)**
    - Antigravity IDE 내의 에이전트(LUCA 등)가 대표님의 "HARNESS로 작업해줘"라는 자연어 명령을 받으면, 자동으로 본 오케스트레이터를 호출해 연쇄 태스크를 자율 수행할 수 있도록 설계된 행동 강령입니다.
 
 ---

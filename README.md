@@ -16,11 +16,17 @@ Each harness coordinates 4-5 specialist agents cooperating as a high-fidelity te
      - **Samsung T9 SSD**: Configured with Sector-Aligned direct write logs to prevent file system I/O bottlenecks during concurrent generation.
    - **ASMR & Graph DB Sync**: Automatically parses and syncs execution results to the local memory server (ASMR on Port 5050) and Neo4j graph database (bolt://localhost:7687).
 
-2. **Control Dashboard (`harness_dashboard.html`)**
+2. **Ontology-Driven Context Injection**
+   - Queries Neo4j Ontology Graph (historical execution memories, agent profiles, domain nodes) and Obsidian shared memory vault (`장기공유메모리/luca_brain_memory/`) dynamically on run-time, auto-injecting task-relevant context to all active agents' system instructions.
+
+3. **Generative Custom Harness Creator**
+   - If the harness query is `"custom"` or no pre-existing template matches, uses Gemini 2.5 to compile a custom 3-5 agent team and DAG workflow plan on the fly (`custom_harness_config.json`), running the custom workflow instantly.
+
+4. **Control Dashboard (`harness_dashboard.html`)**
    - Premium Dark Mode and Glassmorphism Web Interface to monitor all 100 harnesses and copy commands.
    - **Vis.js Interactive Graph**: Embedded dynamic node mapping showing the agent topology (Orchestrator ↔ Teammates) using a physics engine.
 
-3. **Antigravity Custom Skill (`.agent/skills/luca_harness_engine/SKILL.md`)**
+5. **Antigravity Custom Skill (`.agent/skills/luca_harness_engine/SKILL.md`)**
    - Internal guidelines allowing Antigravity agents (like LUCA) to intercept "HARNESS" queries and automatically launch orchestrator runs.
 
 ---
